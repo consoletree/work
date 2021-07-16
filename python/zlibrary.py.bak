@@ -1,0 +1,50 @@
+import requests
+from bs4 import BeautifulSoup
+
+def input_validation():
+    #search=input("Enter a book name: ")
+    #search_url = "https://1lib.in/s/" + search
+    search_url = "https://1lib.in/s/linux"
+    scrap_data(search_url)
+
+def scrap_data(url):
+    print("Scraping Site...")
+    html_text = requests.get(url).text
+    soup = BeautifulSoup(html_text, 'html.parser')
+
+    book_name, book_id, publisher, author, file, year, lang = ([] for _ in range(7))
+    count = 0
+    for data in soup.find_all("div", class_ = "resItemBox resItemBoxBooks exactMatch"):
+        book_id.append(data.table.tr.td.a['href'])
+        book_name.append(data.table.tr.find("td", style="vertical-align: top;").a.string)
+        publisher.append(data.table.tr.find("td", style="vertical-align: top;").div.string)
+        for authors in data.table.tr.find("td", style="vertical-align: top;").find("div", class_="authors"):
+            temp = authors.string
+            if temp == ", ":
+                count = 1
+            else:
+                if count == 1:
+                    count = 0
+                    author[-1].append(temp)
+                else:
+                    author.append([temp])
+        file.append(data.table.find("div", class_ = "bookDetailsBox")
+                    .find("div", class_ = "bookProperty property__file")
+                    .find("div", class_ = "property_value").string)
+        try:
+            temp_year = data.table.find("div", class_ = "bookDetailsBox").find("div", class_ ="bookProperty property_year").find("div", class_="property_value").string
+        except AttributeError:
+            year.append("")
+        else:
+            year.append(temp_year)
+        try:
+            temp_lang = data.table.find("div", class_ = "bookDetailsBox").find("div", class_ ="bookProperty property_language").find("div", class_="property_value").string
+        except AttributeError:
+            lang.append("")
+        else:
+            lang.append(temp_lang)
+
+
+
+
+input_validation()
