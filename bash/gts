@@ -1,0 +1,15 @@
+#!/usr/bin/bash
+
+curl -s https://trends.google.co.in/trends/trendingsearches/daily/rss?geo=$1 -o /tmp/site
+
+readarray -t title <<< $(grep '<title>.*</title>' /tmp/site | tail -n20 | grep -o '>.*<' | tr -d "<>" | sed 's/&amp;#39;/'\''/g')
+readarray -t descp <<< $(grep '<ht:news_item_title>.*</ht:news_item_title>' /tmp/site | grep -o '>.*<' | tr -d '<>' | sed -n 1~2p | sed 's/&amp;#39;/'\''/g')
+
+red="\e[0;91m"
+green="\e[0;92m"
+reset="\e[0m"
+
+for i in {0..19}
+do
+	echo -e "[$(($i+1))] ${red}${title[$i]}\n\t${green}${descp[$i]}\n${reset}" 
+done | less -R

@@ -1,0 +1,4 @@
+#!/bin/bash
+
+readarray -t news_title <<< $(grep -o "data-bbc-title=\"[-',.\!\$0-Z ]*\"" test | grep -o '".*"' | tr -d '"')
+readarray -t group <<< $(grep -o "data-bbc-source=\"[0-Z ]*\"" test | grep -o "\".*\"" | tr -d '"')

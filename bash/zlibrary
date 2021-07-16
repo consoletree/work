@@ -1,0 +1,123 @@
+#!/usr/bin/bash
+
+####################
+#	TODO       #
+####################
+# - fix the thumbnail viewing(make it as fast as ytfzf)
+# - add more flags to search by book name, isbn number, publisher, author
+# - unlock the full potential of curl
+
+
+# take all the arguments as the input, if no arguments prompt for a book name
+search=$*
+[ -z "$search" ] && read -p 'Enter a book Name: ' search
+
+scrap_data () 
+{
+	echo "Scraping Site..."
+	# sed used because percentage encoding is used in urls
+	curl --compressed -s https://1lib.in/s/$(sed 's/\ /%20/g' <<< $search) -o /tmp/site
+
+	# filter out data from the site and store in an array(easily accessible by index number)
+	readarray -t book_id   <<< $(grep -o /book/[0-9]*/[0-z]* /tmp/site | uniq)
+	readarray -t book_name <<< $(grep -o style=\"text-decoration.* /tmp/site | grep -o '>.*<' | tr -d '<>')
+	readarray -t book_info <<< $(grep '<div class="property' /tmp/site | grep -o '>.*<' | tr -d '<>')
+
+	count=1
+	tot=${#book_info[@]}
+	empty="unknown"
+
+	# maybe this for loop is not perfect but it works!!
+	# it first take out all the data inside <div class="property" and group them respectively
+	# complex if conditions is used so that empty data can be captured as it is
+	for (( i = 0; i <= $tot; i+=2 )) 
+	do
+		if [ $count ==  1 ] && [[ ${book_info[i]} == "Year:" ]] ; then
+			year+=("${book_info[i+1]}")	
+			((count++))
+			continue	
+		elif [ $count == 1 ] && [[ ${book_info[i]} == @(Language:|File:) ]] ; then
+			year+=("$empty")
+			((count++))
+		fi
+		if [ $count == 2 ] && [ ${book_info[i]} == "Language:" ] ; then
+			lang+=("${book_info[i+1]}")	
+			((count++))
+			continue	
+		elif [ $count == 2 ] && [[ ${book_info[i]} == "File:" ]] ; then
+			lang+=("$empty")
+			((count++))
+		fi
+		if [ $count == 3 ] && [ ${book_info[i]} == "File:" ] ; then
+			file+=("${book_info[i+1]}")		
+			((count -= 2))
+		elif [ $count == 3 ] ; then
+			file+=("$empty")
+			((count -= 2))
+		fi
+	done
+	unset book_info
+}
+
+img () 
+{
+	[ -d /tmp/img ] || mkdir /tmp/img
+	readarray -t thumbnails <<< $(grep -o https://covers.zlibcdn2.com/covers200.*jpg /tmp/site) 
+
+	# downloading the images to view it inside fzf
+	for im in "${!thumbnails[@]}"; do
+		curl --compressed -s ${thumbnails[$im]} -o "/tmp/img/$im.jpg"
+	done
+	unset thumbnails
+}
+
+book_view () 
+{
+	# colors for fzf
+	c_red="\033[1;31m"
+	c_green="\033[1;32m"
+	c_yellow="\033[1;33m"
+	c_reset="\033[0m"
+	sc_wd=$(tput cols)
+	sc_ht=$(tput lines)
+	img_x=$((sc_wd/2))
+	img_y=$((sc_ht/2))
+
+	# i don't know anything it just works :)
+	your_book=$(printf '%s\n' "${book_name[@]}" | fzf --reverse --preview-window right,40%,wrap --preview "\
+			$(declare -p book_name);\
+	          	$(declare -p year);\
+	          	$(declare -p lang);\
+	          	$(declare -p file);\
+
+	
+			yes '' | head -n 20
+		 	printf '${c_red}Book: ${c_green}%s\n ${c_red}Year: ${c_green}%s\n ${c_red}Language: ${c_green}%s\n ${c_red}File: ${c_green}%s\n ${c_reset}'\
+			       	\"\${book_name[{n}]}\"\
+		  		\"\${year[{n}]}\"\
+		  		\"\${lang[{n}]}\"\
+		  		\"\${file[{n}]}\"
+
+		 	source "`ueberzug library`"
+		 	ImageLayer 0< <(
+			ImageLayer::remove [identifier]="zlibrary-ueberzug"
+		     	ImageLayer::add [identifier]="zlibrary-ueberzug" [x]="120" [y]="3" [path]="/tmp/img/{n}.jpg";
+			sleep 200;
+		     	);"
+		   )
+}
+
+selected_book () 
+{
+	for i in "${!book_name[@]}"; do 
+		[[ "${book_name[$i]}" = "${your_book}" ]] && index=$i
+	done
+}
+
+scrap_data
+echo "Downloading Thumbnails..."
+img &
+book_view
+pkill ueberzug
+pkill sleep
+rm /tmp/img/* 2> /dev/null

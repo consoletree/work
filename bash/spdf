@@ -1,0 +1,10 @@
+#!/bin/sh
+
+convert () {
+	file=$(echo $1 | cut -f1 -d'.')
+	pandoc $1 -o "$file.html" 
+	weasyprint "$file.html" -f pdf "$file.pdf"
+	zathura "$file.pdf" && rm "$file.html"
+} 2> /dev/null
+
+convert $1
