@@ -1,0 +1,5 @@
+
+#to get the album name
+jq .contents.singleColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents[1].musicCarouselShelfRenderer.contents[].musicTwoRowItemRenderer.title.runs[].text young | sed 's/.$//; s/^.//'
+
+
