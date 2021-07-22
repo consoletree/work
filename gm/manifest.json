@@ -1,0 +1,23 @@
+{
+	"manifest_version": 2,
+	"name": "GM attendace",
+	"version": "1.0",
+
+	"description": "Get google meet attendace.",
+
+	"content_scripts": [
+		{
+		  "matches": ["*://meet.google.com/*-*-*"],
+		  "js": ["sscrapeit.js"]
+		}
+	],
+	
+	"permissions": [
+		"*://meet.google.com/*"
+	],
+	"browser_action": {
+		"default_icon": "icon.png",
+		"default_title": "Take Attendance",
+		"default_popup": "view.html"
+	}
+}
